@@ -1,0 +1,4 @@
+"""
+Quran Quest API Backend.
+"""
+
