@@ -105,6 +105,13 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="learn"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
             name="lesson/[id]"
             options={{
               presentation: 'modal',

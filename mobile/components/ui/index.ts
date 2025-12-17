@@ -15,3 +15,6 @@ export { WeeklyStreakCalendar, generateWeekDays } from './WeeklyStreakCalendar';
 export { GlowCard, Card } from './GlowCard';
 export { ReadingLevelBadge, LevelProgressCard } from './ReadingLevelBadge';
 export { StatCounter, StatsRow, StatCard } from './StatCounter';
+
+// Learning components
+export { AyahLearningCard } from './AyahLearningCard';

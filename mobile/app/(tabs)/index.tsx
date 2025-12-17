@@ -216,8 +216,44 @@ export default function HomeScreen() {
           />
         </Animated.View>
 
-        {/* Continue Reading Card */}
+        {/* Learn & Memorize Card */}
         <Animated.View entering={FadeInDown.delay(400).duration(400)}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push('/learn')}
+          >
+            <LinearGradient
+              colors={[colors.accent, colors.accentDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.continueCard}
+            >
+              <View style={styles.continueContent}>
+                <View style={styles.continueIcon}>
+                  <MaterialCommunityIcons
+                    name="brain"
+                    size={48}
+                    color={colors.text}
+                  />
+                </View>
+                <View style={styles.continueText}>
+                  <Text style={styles.continueTitle}>Learn & Memorize</Text>
+                  <Text style={styles.continueSubtitle}>
+                    Confidence-based Quran memorization
+                  </Text>
+                </View>
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={28}
+                  color={colors.text}
+                />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Continue Reading Card */}
+        <Animated.View entering={FadeInDown.delay(450).duration(400)}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => router.push('/practice')}

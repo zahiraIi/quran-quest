@@ -327,3 +327,84 @@ export interface AppSettings {
   soundEffects: boolean;
 }
 
+// ============================================================================
+// Learning Engine - Confidence-Based Memorization
+// ============================================================================
+
+/**
+ * Learning status for an ayah in the memorization flow.
+ * - new: Never seen before
+ * - learning: Currently being practiced
+ * - reviewing: User marked confident, now testing
+ * - mastered: Successfully recalled from memory
+ */
+export type AyahLearningStatus = 'new' | 'learning' | 'reviewing' | 'mastered';
+
+/**
+ * User's confidence level for an ayah.
+ */
+export type ConfidenceLevel = 'not_confident' | 'somewhat_confident' | 'confident';
+
+/**
+ * Tracks the learning state of a single ayah.
+ */
+export interface AyahLearningState {
+  ayahId: number;
+  surahId: number;
+  ayahNumber: number;
+  status: AyahLearningStatus;
+  confidenceLevel: ConfidenceLevel;
+  readCount: number; // How many times user has read this ayah
+  testAttempts: number; // How many times user tried to recall
+  successfulRecalls: number; // Successful test completions
+  lastPracticed: string | null; // ISO date
+  masteredAt: string | null; // When it turned green
+}
+
+/**
+ * A learning session containing ayahs to memorize.
+ */
+export interface LearningSession {
+  id: string;
+  surahId: number;
+  surahName: string;
+  ayahRange: {
+    start: number;
+    end: number;
+  };
+  ayahs: AyahWithLearning[];
+  startedAt: string;
+  completedAt: string | null;
+}
+
+/**
+ * Ayah data combined with learning state.
+ */
+export interface AyahWithLearning extends Ayah {
+  learningState: AyahLearningState;
+}
+
+/**
+ * Result of a test attempt.
+ */
+export interface TestResult {
+  ayahId: number;
+  passed: boolean;
+  userRecitation?: string;
+  accuracy?: number;
+  attemptedAt: string;
+}
+
+/**
+ * Progress summary for a surah.
+ */
+export interface SurahLearningProgress {
+  surahId: number;
+  totalAyahs: number;
+  newCount: number;
+  learningCount: number;
+  reviewingCount: number;
+  masteredCount: number;
+  percentComplete: number;
+}
+
