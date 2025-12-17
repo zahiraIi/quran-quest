@@ -271,7 +271,18 @@ export default function HomeScreen() {
 
   const handleLessonPress = (lessonId: string) => {
     impactAsync(ImpactFeedbackStyle.Medium);
-    router.push('/learn');
+    
+    // Route to specific lesson type
+    switch (lessonId) {
+      case '1': // Arabic Letters
+        router.push('/alphabet');
+        break;
+      case '3': // Al-Fatiha
+        router.push('/learn/1'); // Surah 1
+        break;
+      default:
+        router.push('/learn');
+    }
   };
 
   const handleStartLearning = () => {

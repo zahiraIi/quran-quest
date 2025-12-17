@@ -126,6 +126,13 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen name="auth" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="alphabet"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
         </Stack>
       </QueryClientProvider>
     </GestureHandlerRootView>
