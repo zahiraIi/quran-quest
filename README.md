@@ -190,11 +190,3 @@ quran-quest/
 │
 └── docker/                    # Docker configs
 ```
-
-## 📄 License
-
-MIT License - feel free to use for your own Quran learning projects!
-
-## 🤲 Du'a
-
-May Allah accept this effort and make it beneficial for the Ummah. Ameen.
