@@ -141,7 +141,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/quran-quest.git
+git clone https://github.com/zahiraIi/quran-quest.git
 cd quran-quest
 
 # Install frontend dependencies
@@ -198,4 +198,3 @@ MIT License - feel free to use for your own Quran learning projects!
 ## 🤲 Du'a
 
 May Allah accept this effort and make it beneficial for the Ummah. Ameen.
-
