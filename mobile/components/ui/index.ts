@@ -18,3 +18,14 @@ export { StatCounter, StatsRow, StatCard } from './StatCounter';
 
 // Learning components
 export { AyahLearningCard } from './AyahLearningCard';
+export { DuoButton } from './DuoButton';
+
+// Celebration components
+export {
+  Confetti,
+  XpPopup,
+  LessonCompleteModal,
+  StreakCelebration,
+  MasteredBadge,
+  Toast,
+} from './Celebration';

@@ -1,13 +1,12 @@
 /**
- * AyahLearningCard - Core component for confidence-based memorization.
+ * AyahLearningCard - Duolingo-style confidence-based memorization card.
  *
  * Features:
- * - Shows Arabic ayah text with optional translation
- * - Confidence level selector (Not confident / Somewhat / Confident)
- * - Test mode: hides text, reveals on tap
- * - Status indicator (green checkmark when mastered)
- * - Read counter
- * - Audio playback
+ * - Big, friendly 3D buttons
+ * - Encouraging feedback and animations
+ * - Clear visual status (mastered = green celebration)
+ * - Test mode with tap-to-reveal
+ * - Playful, approachable UI
  */
 
 import React, { useState, useCallback } from 'react';
@@ -21,18 +20,20 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
   FadeIn,
+  FadeInDown,
   FadeOut,
   SlideInUp,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withSequence,
-  runOnJS,
+  withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { colors, spacing, typography, radii, shadows } from '@/theme';
+import { colors, spacing, typography, radii, shadows, animations, encouragements } from '@/theme';
 import { impactAsync, notificationAsync, ImpactFeedbackStyle, NotificationFeedbackType } from '@/utils/haptics';
+import { DuoButton } from './DuoButton';
 import type { AyahWithLearning, ConfidenceLevel, AyahLearningStatus } from '@/types';
 
 // ============================================================================
@@ -55,31 +56,36 @@ interface AyahLearningCardProps {
 // ============================================================================
 
 /**
- * Status indicator badge showing current learning state.
+ * Friendly status badge with emoji.
  */
 function StatusBadge({ status, readCount }: { status: AyahLearningStatus; readCount: number }) {
   const statusConfig = {
-    new: { color: colors.textMuted, icon: 'circle-outline', label: 'New' },
-    learning: { color: colors.info, icon: 'book-open-variant', label: 'Learning' },
-    reviewing: { color: colors.warning, icon: 'eye', label: 'Testing' },
-    mastered: { color: colors.success, icon: 'check-circle', label: 'Mastered' },
+    new: { color: colors.accent, icon: 'star', emoji: '✨', label: 'New' },
+    learning: { color: colors.secondary, icon: 'book-open-variant', emoji: '📖', label: 'Learning' },
+    reviewing: { color: colors.purple, icon: 'brain', emoji: '🧠', label: 'Testing' },
+    mastered: { color: colors.success, icon: 'check-circle', emoji: '🎉', label: 'Mastered!' },
   };
 
   const config = statusConfig[status];
 
   return (
-    <View style={[styles.statusBadge, { backgroundColor: `${config.color}20` }]}>
-      <MaterialCommunityIcons name={config.icon as any} size={14} color={config.color} />
+    <Animated.View
+      entering={FadeIn.duration(300)}
+      style={[styles.statusBadge, { backgroundColor: `${config.color}25` }]}
+    >
+      <Text style={styles.statusEmoji}>{config.emoji}</Text>
       <Text style={[styles.statusText, { color: config.color }]}>{config.label}</Text>
-      {readCount > 0 && (
-        <Text style={[styles.readCount, { color: config.color }]}>• {readCount}x read</Text>
+      {readCount > 0 && status !== 'mastered' && (
+        <View style={[styles.readCountBadge, { backgroundColor: config.color }]}>
+          <Text style={styles.readCountText}>{readCount}x</Text>
+        </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
 /**
- * Confidence level selector buttons.
+ * Confidence level selector with friendly emojis.
  */
 function ConfidenceSelector({
   currentLevel,
@@ -90,43 +96,47 @@ function ConfidenceSelector({
   onSelect: (level: ConfidenceLevel) => void;
   disabled?: boolean;
 }) {
-  const levels: { value: ConfidenceLevel; label: string; emoji: string }[] = [
-    { value: 'not_confident', label: 'Not yet', emoji: '😕' },
-    { value: 'somewhat_confident', label: 'Almost', emoji: '🤔' },
-    { value: 'confident', label: 'I know it!', emoji: '💪' },
+  const levels: { value: ConfidenceLevel; label: string; emoji: string; color: string }[] = [
+    { value: 'not_confident', label: 'Need more practice', emoji: '🤔', color: colors.secondary },
+    { value: 'somewhat_confident', label: 'Almost there!', emoji: '💭', color: colors.accent },
+    { value: 'confident', label: 'I know this!', emoji: '💪', color: colors.primary },
   ];
 
   return (
     <View style={styles.confidenceContainer}>
-      <Text style={styles.confidenceTitle}>How well do you know this ayah?</Text>
+      <Text style={styles.confidenceTitle}>How confident are you?</Text>
       <View style={styles.confidenceButtons}>
-        {levels.map((level) => {
+        {levels.map((level, index) => {
           const isSelected = currentLevel === level.value;
           return (
-            <TouchableOpacity
+            <Animated.View
               key={level.value}
-              style={[
-                styles.confidenceButton,
-                isSelected && styles.confidenceButtonSelected,
-                level.value === 'confident' && isSelected && styles.confidenceButtonConfident,
-              ]}
-              onPress={() => {
-                impactAsync(ImpactFeedbackStyle.Light);
-                onSelect(level.value);
-              }}
-              disabled={disabled}
-              activeOpacity={0.7}
+              entering={FadeInDown.delay(index * 100).duration(300)}
+              style={{ flex: 1 }}
             >
-              <Text style={styles.confidenceEmoji}>{level.emoji}</Text>
-              <Text
+              <Pressable
                 style={[
-                  styles.confidenceLabel,
-                  isSelected && styles.confidenceLabelSelected,
+                  styles.confidenceButton,
+                  isSelected && { borderColor: level.color, backgroundColor: `${level.color}20` },
                 ]}
+                onPress={() => {
+                  impactAsync(ImpactFeedbackStyle.Light);
+                  onSelect(level.value);
+                }}
+                disabled={disabled}
               >
-                {level.label}
-              </Text>
-            </TouchableOpacity>
+                <Text style={styles.confidenceEmoji}>{level.emoji}</Text>
+                <Text
+                  style={[
+                    styles.confidenceLabel,
+                    isSelected && { color: level.color, fontWeight: '700' },
+                  ]}
+                  numberOfLines={2}
+                >
+                  {level.label}
+                </Text>
+              </Pressable>
+            </Animated.View>
           );
         })}
       </View>
@@ -135,9 +145,9 @@ function ConfidenceSelector({
 }
 
 /**
- * Hidden ayah view for test mode.
+ * Test mode - Hidden ayah with tap to reveal.
  */
-function HiddenAyahView({
+function TestModeView({
   onReveal,
   onPass,
   onFail,
@@ -150,42 +160,102 @@ function HiddenAyahView({
   revealed: boolean;
   ayahText: string;
 }) {
-  return (
-    <View style={styles.testContainer}>
-      {!revealed ? (
-        <Pressable style={styles.hiddenAyahBox} onPress={onReveal}>
-          <MaterialCommunityIcons name="eye-off" size={48} color={colors.textMuted} />
-          <Text style={styles.hiddenText}>Tap to reveal and check</Text>
-          <Text style={styles.hiddenSubtext}>Try to recite from memory first</Text>
-        </Pressable>
-      ) : (
-        <Animated.View entering={FadeIn.duration(300)} style={styles.revealedContainer}>
-          <Text style={styles.revealedAyah}>{ayahText}</Text>
-          
-          <Text style={styles.testQuestion}>Did you recall it correctly?</Text>
-          
-          <View style={styles.testButtons}>
-            <TouchableOpacity
-              style={[styles.testButton, styles.testButtonFail]}
-              onPress={onFail}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="close" size={24} color={colors.error} />
-              <Text style={[styles.testButtonText, { color: colors.error }]}>Not quite</Text>
-            </TouchableOpacity>
+  const scale = useSharedValue(1);
 
-            <TouchableOpacity
-              style={[styles.testButton, styles.testButtonPass]}
-              onPress={onPass}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="check" size={24} color={colors.success} />
-              <Text style={[styles.testButtonText, { color: colors.success }]}>Got it!</Text>
-            </TouchableOpacity>
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handleRevealPress = () => {
+    scale.value = withSequence(
+      withSpring(0.95, animations.bounce),
+      withSpring(1, animations.bounce)
+    );
+    impactAsync(ImpactFeedbackStyle.Medium);
+    onReveal();
+  };
+
+  if (!revealed) {
+    return (
+      <Animated.View style={animatedStyle}>
+        <Pressable style={styles.hiddenAyahBox} onPress={handleRevealPress}>
+          <View style={styles.hiddenIconContainer}>
+            <MaterialCommunityIcons name="eye-off" size={48} color={colors.accent} />
           </View>
-        </Animated.View>
-      )}
-    </View>
+          <Text style={styles.hiddenTitle}>Test yourself! 🧠</Text>
+          <Text style={styles.hiddenSubtext}>
+            Try to recite from memory, then tap to check
+          </Text>
+          <View style={styles.tapHint}>
+            <MaterialCommunityIcons name="gesture-tap" size={20} color={colors.textMuted} />
+            <Text style={styles.tapHintText}>Tap to reveal</Text>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  }
+
+  return (
+    <Animated.View entering={FadeIn.duration(400)} style={styles.revealedContainer}>
+      <Text style={styles.revealedAyah}>{ayahText}</Text>
+
+      <Text style={styles.testQuestion}>Did you get it right?</Text>
+
+      <View style={styles.testButtonsRow}>
+        <View style={{ flex: 1 }}>
+          <DuoButton
+            title="Not quite"
+            onPress={() => {
+              notificationAsync(NotificationFeedbackType.Warning);
+              onFail();
+            }}
+            variant="danger"
+            icon="close"
+            fullWidth
+          />
+        </View>
+        <View style={{ width: spacing.md }} />
+        <View style={{ flex: 1 }}>
+          <DuoButton
+            title="Got it!"
+            onPress={() => {
+              notificationAsync(NotificationFeedbackType.Success);
+              onPass();
+            }}
+            variant="primary"
+            icon="check"
+            fullWidth
+          />
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
+/**
+ * Mastered celebration banner.
+ */
+function MasteredBanner() {
+  const randomEncouragement = encouragements.correct[
+    Math.floor(Math.random() * encouragements.correct.length)
+  ];
+
+  return (
+    <Animated.View entering={SlideInUp.springify().damping(8)} style={styles.masteredBanner}>
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.masteredGradient}
+      >
+        <Text style={styles.masteredEmoji}>🎉</Text>
+        <View style={styles.masteredTextContainer}>
+          <Text style={styles.masteredTitle}>Ayah Mastered!</Text>
+          <Text style={styles.masteredSubtitle}>{randomEncouragement}</Text>
+        </View>
+        <MaterialCommunityIcons name="check-decagram" size={32} color={colors.textOnPrimary} />
+      </LinearGradient>
+    </Animated.View>
   );
 }
 
@@ -208,7 +278,7 @@ export function AyahLearningCard({
   const isMastered = learningState.status === 'mastered';
   const isReviewing = learningState.status === 'reviewing';
 
-  // Animation for mastered state
+  // Animation values
   const cardScale = useSharedValue(1);
 
   const animatedCardStyle = useAnimatedStyle(() => ({
@@ -216,25 +286,26 @@ export function AyahLearningCard({
   }));
 
   const handleReveal = useCallback(() => {
-    impactAsync(ImpactFeedbackStyle.Medium);
     setRevealed(true);
   }, []);
 
   const handlePass = useCallback(() => {
-    notificationAsync(NotificationFeedbackType.Success);
     cardScale.value = withSequence(
-      withSpring(1.02),
-      withSpring(1)
+      withSpring(1.02, animations.celebration),
+      withSpring(1, animations.gentle)
     );
     onTestComplete(true);
     setRevealed(false);
   }, [onTestComplete, cardScale]);
 
   const handleFail = useCallback(() => {
-    notificationAsync(NotificationFeedbackType.Warning);
+    cardScale.value = withSequence(
+      withTiming(0.98, { duration: 100 }),
+      withSpring(1, animations.spring)
+    );
     onTestComplete(false);
     setRevealed(false);
-  }, [onTestComplete]);
+  }, [onTestComplete, cardScale]);
 
   const handleReadAgain = useCallback(() => {
     impactAsync(ImpactFeedbackStyle.Light);
@@ -244,12 +315,11 @@ export function AyahLearningCard({
   const handleConfidenceSelect = useCallback(
     (level: ConfidenceLevel) => {
       onSetConfidence(level);
-      
-      // If confident, automatically start test
+
       if (level === 'confident') {
         setTimeout(() => {
           onStartTest();
-        }, 500);
+        }, 600);
       }
     },
     [onSetConfidence, onStartTest]
@@ -257,35 +327,28 @@ export function AyahLearningCard({
 
   return (
     <Animated.View style={[styles.card, animatedCardStyle, isMastered && styles.cardMastered]}>
-      {/* Mastered glow effect */}
-      {isMastered && (
-        <LinearGradient
-          colors={[`${colors.success}15`, 'transparent']}
-          style={styles.masteredGlow}
-        />
-      )}
-
-      {/* Header: Ayah number + status */}
+      {/* Header */}
       <View style={styles.header}>
-        <View style={styles.ayahNumber}>
-          <Text style={styles.ayahNumberText}>{ayah.numberInSurah}</Text>
+        <View style={styles.ayahNumberContainer}>
+          <Text style={styles.ayahNumber}>{ayah.numberInSurah}</Text>
         </View>
+
         <StatusBadge status={learningState.status} readCount={learningState.readCount} />
-        
+
         {onPlayAudio && (
           <TouchableOpacity
             style={styles.audioButton}
             onPress={onPlayAudio}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons name="volume-high" size={22} color={colors.primary} />
+            <MaterialCommunityIcons name="volume-high" size={24} color={colors.accent} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Main content */}
+      {/* Content */}
       {isTestMode || isReviewing ? (
-        <HiddenAyahView
+        <TestModeView
           onReveal={handleReveal}
           onPass={handlePass}
           onFail={handleFail}
@@ -301,18 +364,18 @@ export function AyahLearningCard({
 
           {/* Translation */}
           {showTranslation && ayah.translation && (
-            <Text style={styles.translationText}>{ayah.translation}</Text>
+            <View style={styles.translationContainer}>
+              <Text style={styles.translationText}>{ayah.translation}</Text>
+            </View>
           )}
 
           {/* Read again button */}
-          <TouchableOpacity
-            style={styles.readButton}
-            onPress={handleReadAgain}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="refresh" size={18} color={colors.primary} />
-            <Text style={styles.readButtonText}>I've read it again</Text>
-          </TouchableOpacity>
+          {!isMastered && (
+            <TouchableOpacity style={styles.readButton} onPress={handleReadAgain}>
+              <MaterialCommunityIcons name="refresh" size={20} color={colors.accent} />
+              <Text style={styles.readButtonText}>I've read it again</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Confidence selector */}
           {!isMastered && (
@@ -323,13 +386,21 @@ export function AyahLearningCard({
             />
           )}
 
-          {/* Mastered message */}
-          {isMastered && (
-            <Animated.View entering={SlideInUp.duration(300)} style={styles.masteredBanner}>
-              <MaterialCommunityIcons name="check-circle" size={24} color={colors.success} />
-              <Text style={styles.masteredText}>You've memorized this ayah! 🎉</Text>
+          {/* Ready to test button */}
+          {learningState.confidenceLevel === 'confident' && !isMastered && (
+            <Animated.View entering={FadeInDown.delay(200).duration(300)} style={styles.testButtonContainer}>
+              <DuoButton
+                title="Test Me! 🧠"
+                onPress={onStartTest}
+                variant="accent"
+                size="lg"
+                fullWidth
+              />
             </Animated.View>
           )}
+
+          {/* Mastered celebration */}
+          {isMastered && <MasteredBanner />}
         </>
       )}
     </Animated.View>
@@ -343,25 +414,17 @@ export function AyahLearningCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.backgroundCard,
-    borderRadius: radii.xl,
+    borderRadius: radii.card,
     padding: spacing.lg,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.md,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.border,
     ...shadows.md,
-    overflow: 'hidden',
   },
   cardMastered: {
     borderColor: colors.success,
-    borderWidth: 2,
-  },
-  masteredGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 100,
+    borderWidth: 3,
   },
   header: {
     flexDirection: 'row',
@@ -369,60 +432,76 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     gap: spacing.sm,
   },
-  ayahNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primaryMuted,
+  ayahNumberContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadows.sm,
   },
-  ayahNumberText: {
-    fontSize: typography.sizes.md,
-    fontWeight: '700',
-    color: colors.primary,
+  ayahNumber: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '800',
+    color: colors.textOnPrimary,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: radii.full,
-    gap: spacing.xxs,
+    gap: spacing.xs,
+    flex: 1,
+  },
+  statusEmoji: {
+    fontSize: 16,
   },
   statusText: {
-    fontSize: typography.sizes.xs,
-    fontWeight: '600',
+    fontSize: typography.sizes.sm,
+    fontWeight: '700',
   },
-  readCount: {
+  readCountBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radii.full,
+    marginLeft: 'auto',
+  },
+  readCountText: {
     fontSize: typography.sizes.xs,
-    fontWeight: '500',
+    fontWeight: '700',
+    color: colors.textOnPrimary,
   },
   audioButton: {
-    marginLeft: 'auto',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryMuted,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.accentMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ayahContainer: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
     marginBottom: spacing.md,
   },
   arabicText: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '400',
     color: colors.textArabic,
-    textAlign: 'right',
-    lineHeight: 56,
-    fontFamily: 'System', // Will use system Arabic font
+    textAlign: 'center',
+    lineHeight: 64,
+  },
+  translationContainer: {
+    marginBottom: spacing.lg,
   },
   translationText: {
     fontSize: typography.sizes.md,
     color: colors.textSecondary,
     lineHeight: 24,
-    marginBottom: spacing.lg,
+    textAlign: 'center',
   },
   readButton: {
     flexDirection: 'row',
@@ -430,24 +509,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.xs,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.primaryMuted,
-    borderRadius: radii.lg,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.accentMuted,
+    borderRadius: radii.full,
     alignSelf: 'center',
     marginBottom: spacing.lg,
   },
   readButtonText: {
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.md,
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.accent,
   },
   confidenceContainer: {
     marginTop: spacing.sm,
   },
   confidenceTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: '600',
-    color: colors.textSecondary,
+    fontSize: typography.sizes.lg,
+    fontWeight: '700',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
@@ -456,121 +535,123 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   confidenceButton: {
-    flex: 1,
     alignItems: 'center',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
-    backgroundColor: colors.backgroundMuted,
+    backgroundColor: colors.surfaceLight,
     borderRadius: radii.lg,
     borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  confidenceButtonSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryMuted,
-  },
-  confidenceButtonConfident: {
-    borderColor: colors.success,
-    backgroundColor: colors.successMuted,
+    borderColor: colors.border,
+    minHeight: 100,
+    justifyContent: 'center',
   },
   confidenceEmoji: {
-    fontSize: 24,
+    fontSize: 32,
     marginBottom: spacing.xs,
   },
   confidenceLabel: {
-    fontSize: typography.sizes.xs,
+    fontSize: typography.sizes.sm,
     fontWeight: '600',
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  confidenceLabelSelected: {
-    color: colors.text,
+  testButtonContainer: {
+    marginTop: spacing.lg,
   },
+  // Mastered banner
   masteredBanner: {
+    marginTop: spacing.lg,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+  },
+  masteredGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: colors.successMuted,
-    borderRadius: radii.lg,
-    marginTop: spacing.md,
+    padding: spacing.lg,
+    gap: spacing.md,
   },
-  masteredText: {
-    fontSize: typography.sizes.md,
-    fontWeight: '600',
-    color: colors.success,
+  masteredEmoji: {
+    fontSize: 32,
   },
-  // Test mode styles
-  testContainer: {
-    minHeight: 200,
+  masteredTextContainer: {
+    flex: 1,
   },
+  masteredTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '800',
+    color: colors.textOnPrimary,
+  },
+  masteredSubtitle: {
+    fontSize: typography.sizes.sm,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: spacing.xxs,
+  },
+  // Test mode
   hiddenAyahBox: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xxl,
-    backgroundColor: colors.backgroundMuted,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surfaceLight,
     borderRadius: radii.lg,
-    borderWidth: 2,
+    borderWidth: 3,
     borderStyle: 'dashed',
-    borderColor: colors.border,
+    borderColor: colors.accent,
   },
-  hiddenText: {
-    fontSize: typography.sizes.md,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginTop: spacing.md,
+  hiddenIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.accentMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  hiddenTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   hiddenSubtext: {
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  tapHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  tapHintText: {
     fontSize: typography.sizes.sm,
     color: colors.textMuted,
-    marginTop: spacing.xs,
   },
   revealedContainer: {
     alignItems: 'center',
   },
   revealedAyah: {
-    fontSize: 26,
+    fontSize: 28,
     color: colors.textArabic,
     textAlign: 'center',
-    lineHeight: 52,
+    lineHeight: 56,
+    backgroundColor: colors.surfaceLight,
+    padding: spacing.lg,
+    borderRadius: radii.lg,
     marginBottom: spacing.lg,
+    width: '100%',
   },
   testQuestion: {
-    fontSize: typography.sizes.md,
-    fontWeight: '600',
+    fontSize: typography.sizes.lg,
+    fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.md,
   },
-  testButtons: {
+  testButtonsRow: {
     flexDirection: 'row',
-    gap: spacing.md,
     width: '100%',
-  },
-  testButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    borderRadius: radii.lg,
-    borderWidth: 2,
-  },
-  testButtonPass: {
-    backgroundColor: colors.successMuted,
-    borderColor: colors.success,
-  },
-  testButtonFail: {
-    backgroundColor: colors.errorMuted,
-    borderColor: colors.error,
-  },
-  testButtonText: {
-    fontSize: typography.sizes.md,
-    fontWeight: '700',
   },
 });
 
 export default AyahLearningCard;
-

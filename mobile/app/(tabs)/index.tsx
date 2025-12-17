@@ -1,13 +1,11 @@
 /**
- * Home screen - Premium redesigned learning path.
+ * Home screen - Duolingo-inspired learning path.
  *
  * Features:
- * - Weekly streak calendar at top
- * - Daily goal ring with animated progress
- * - Reading level badge
- * - Stats row (time, verses, XP)
- * - Continue reading card
- * - Lesson modules
+ * - Friendly header with streak and hearts
+ * - Visual lesson path with connected nodes
+ * - Daily goal progress
+ * - Encouraging UI with playful elements
  */
 
 import React from 'react';
@@ -30,62 +28,74 @@ import {
   DailyGoalRing,
   WeeklyStreakCalendar,
   generateWeekDays,
-  GlowCard,
-  ReadingLevelBadge,
-  StatsRow,
   HeartDisplay,
+  DuoButton,
 } from '@/components/ui';
 import { useAuthStore } from '@/stores/auth.store';
+import { impactAsync, ImpactFeedbackStyle } from '@/utils/haptics';
 
-// Mock data for lesson modules
-const MOCK_MODULES = [
+// ============================================================================
+// Mock Data
+// ============================================================================
+
+const MOCK_LESSONS = [
   {
     id: '1',
     title: 'Arabic Letters',
-    titleArabic: 'الحروف العربية',
-    description: 'Learn the Arabic alphabet',
-    iconName: 'abjad-arabic',
+    titleArabic: 'الحروف',
+    icon: 'abjad-arabic',
     color: colors.primary,
-    lessonCount: 10,
-    completedCount: 7,
+    progress: 70,
+    completed: false,
     locked: false,
+    crown: 2,
   },
   {
     id: '2',
     title: 'Pronunciation',
-    titleArabic: 'المخارج',
-    description: 'Master letter sounds',
-    iconName: 'speaker',
-    color: colors.secondary,
-    lessonCount: 8,
-    completedCount: 3,
+    titleArabic: 'النطق',
+    icon: 'microphone',
+    color: colors.accent,
+    progress: 30,
+    completed: false,
     locked: false,
+    crown: 1,
   },
   {
     id: '3',
-    title: 'Surah Al-Fatiha',
-    titleArabic: 'سورة الفاتحة',
-    description: 'Learn the opening chapter',
-    iconName: 'book-open-page-variant',
-    color: colors.accent,
-    lessonCount: 7,
-    completedCount: 0,
+    title: 'Al-Fatiha',
+    titleArabic: 'الفاتحة',
+    icon: 'book-open-page-variant',
+    color: colors.secondary,
+    progress: 0,
+    completed: false,
     locked: false,
+    crown: 0,
   },
   {
     id: '4',
     title: 'Basic Tajweed',
     titleArabic: 'التجويد',
-    description: 'Proper recitation rules',
-    iconName: 'tune',
-    color: colors.streak,
-    lessonCount: 12,
-    completedCount: 0,
+    icon: 'music-note',
+    color: colors.purple,
+    progress: 0,
+    completed: false,
     locked: true,
+    crown: 0,
+  },
+  {
+    id: '5',
+    title: 'Short Surahs',
+    titleArabic: 'القصار',
+    icon: 'star',
+    color: colors.streak,
+    progress: 0,
+    completed: false,
+    locked: true,
+    crown: 0,
   },
 ];
 
-// Mock user stats
 const MOCK_STATS = {
   currentStreak: 7,
   hearts: 4,
@@ -93,10 +103,158 @@ const MOCK_STATS = {
   dailyXp: 32,
   dailyGoal: 50,
   totalXp: 1250,
-  minutesToday: 12,
-  versesToday: 5,
-  level: 5,
+  gems: 340,
 };
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+/**
+ * Header with streak, gems, hearts - Duolingo style.
+ */
+function Header({ stats }: { stats: typeof MOCK_STATS }) {
+  return (
+    <View style={styles.header}>
+      {/* Streak */}
+      <TouchableOpacity style={styles.headerItem}>
+        <Text style={styles.streakEmoji}>🔥</Text>
+        <Text style={styles.headerValue}>{stats.currentStreak}</Text>
+      </TouchableOpacity>
+
+      {/* Gems */}
+      <TouchableOpacity style={styles.headerItem}>
+        <MaterialCommunityIcons name="diamond-stone" size={24} color={colors.accent} />
+        <Text style={[styles.headerValue, { color: colors.accent }]}>{stats.gems}</Text>
+      </TouchableOpacity>
+
+      {/* Hearts */}
+      <HeartDisplay current={stats.hearts} max={stats.maxHearts} size="sm" showCount />
+    </View>
+  );
+}
+
+/**
+ * Single lesson node in the path - Duolingo style circular button.
+ */
+function LessonNode({
+  lesson,
+  index,
+  onPress,
+}: {
+  lesson: typeof MOCK_LESSONS[0];
+  index: number;
+  onPress: () => void;
+}) {
+  const isOdd = index % 2 === 1;
+  const offset = isOdd ? 60 : -60;
+
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(100 + index * 80).duration(400)}
+      style={[styles.lessonNodeContainer, { marginLeft: offset }]}
+    >
+      {/* Connector line (not for first) */}
+      {index > 0 && (
+        <View style={[styles.connector, { left: isOdd ? -30 : 30 }]} />
+      )}
+
+      {/* Main node */}
+      <TouchableOpacity
+        style={[
+          styles.lessonNode,
+          { backgroundColor: lesson.locked ? colors.backgroundMuted : lesson.color },
+          lesson.locked && styles.lessonNodeLocked,
+        ]}
+        onPress={onPress}
+        activeOpacity={lesson.locked ? 1 : 0.8}
+        disabled={lesson.locked}
+      >
+        {lesson.locked ? (
+          <MaterialCommunityIcons name="lock" size={32} color={colors.textMuted} />
+        ) : (
+          <MaterialCommunityIcons
+            name={lesson.icon as any}
+            size={36}
+            color={colors.textOnPrimary}
+          />
+        )}
+
+        {/* Progress ring */}
+        {!lesson.locked && lesson.progress > 0 && (
+          <View style={styles.progressRing}>
+            <View
+              style={[
+                styles.progressRingFill,
+                {
+                  backgroundColor: colors.primaryLight,
+                  width: `${lesson.progress}%`,
+                },
+              ]}
+            />
+          </View>
+        )}
+
+        {/* Crown badges */}
+        {lesson.crown > 0 && (
+          <View style={styles.crownBadge}>
+            {Array.from({ length: lesson.crown }).map((_, i) => (
+              <Text key={i} style={styles.crownEmoji}>👑</Text>
+            ))}
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Label */}
+      <Text style={[styles.lessonTitle, lesson.locked && styles.lessonTitleLocked]}>
+        {lesson.title}
+      </Text>
+      <Text style={[styles.lessonTitleArabic, lesson.locked && styles.lessonTitleLocked]}>
+        {lesson.titleArabic}
+      </Text>
+    </Animated.View>
+  );
+}
+
+/**
+ * Daily goal card.
+ */
+function DailyGoalCard({ current, goal }: { current: number; goal: number }) {
+  const percentage = Math.min((current / goal) * 100, 100);
+  const isComplete = current >= goal;
+
+  return (
+    <Animated.View entering={FadeInDown.delay(50).duration(400)} style={styles.goalCard}>
+      <View style={styles.goalHeader}>
+        <Text style={styles.goalTitle}>Daily Goal</Text>
+        {isComplete && <Text style={styles.goalComplete}>🎉 Complete!</Text>}
+      </View>
+
+      <View style={styles.goalContent}>
+        <DailyGoalRing currentXp={current} goalXp={goal} size={80} />
+        <View style={styles.goalText}>
+          <Text style={styles.goalXp}>
+            <Text style={styles.goalXpCurrent}>{current}</Text>
+            <Text style={styles.goalXpSlash}> / </Text>
+            <Text style={styles.goalXpGoal}>{goal} XP</Text>
+          </Text>
+          <View style={styles.goalProgressBar}>
+            <View style={[styles.goalProgressFill, { width: `${percentage}%` }]} />
+          </View>
+          <Text style={styles.goalEncouragement}>
+            {isComplete
+              ? "Amazing work! 💪"
+              : `${goal - current} XP to go - you've got this!`}
+          </Text>
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -111,13 +269,21 @@ export default function HomeScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  const handleModulePress = (moduleId: string, locked: boolean) => {
-    if (locked) return;
-    router.push(`/lesson/${moduleId}`);
+  const handleLessonPress = (lessonId: string) => {
+    impactAsync(ImpactFeedbackStyle.Medium);
+    router.push('/learn');
+  };
+
+  const handleStartLearning = () => {
+    impactAsync(ImpactFeedbackStyle.Medium);
+    router.push('/learn');
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <Header stats={userStats} />
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -130,18 +296,10 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Header */}
-        <Animated.View entering={FadeInUp.duration(400)} style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Assalamu Alaikum</Text>
-            <Text style={styles.subtitle}>Ready to learn today?</Text>
-          </View>
-          <HeartDisplay
-            current={userStats.hearts}
-            max={userStats.maxHearts}
-            size="md"
-            showCount
-          />
+        {/* Greeting */}
+        <Animated.View entering={FadeInUp.duration(400)} style={styles.greeting}>
+          <Text style={styles.greetingText}>Assalamu Alaikum! 👋</Text>
+          <Text style={styles.greetingSubtext}>Ready to learn today?</Text>
         </Animated.View>
 
         {/* Weekly Streak Calendar */}
@@ -153,255 +311,91 @@ export default function HomeScreen() {
           />
         </Animated.View>
 
-        {/* Daily Goal Section */}
-        <Animated.View
-          entering={FadeInDown.delay(200).duration(400)}
-          style={styles.goalSection}
-        >
-          <GlowCard
+        {/* Daily Goal */}
+        <DailyGoalCard current={userStats.dailyXp} goal={userStats.dailyGoal} />
+
+        {/* Start Learning Button */}
+        <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.startButtonContainer}>
+          <DuoButton
+            title="Start Learning 📖"
+            onPress={handleStartLearning}
             variant="primary"
-            glow={userStats.dailyXp >= userStats.dailyGoal}
-            style={styles.goalCard}
-          >
-            <View style={styles.goalContent}>
-              <View style={styles.goalLeft}>
-                <Text style={styles.goalTitle}>Daily Goal</Text>
-                <Text style={styles.goalDescription}>
-                  {userStats.dailyXp >= userStats.dailyGoal
-                    ? '🎉 Goal achieved!'
-                    : `${userStats.dailyGoal - userStats.dailyXp} XP to go`}
-                </Text>
-                <ReadingLevelBadge
-                  levelId={Math.ceil(userStats.minutesToday / 10) || 1}
-                  minutesRead={userStats.minutesToday}
-                  size="sm"
-                  style={styles.levelBadge}
-                />
-              </View>
-              <DailyGoalRing
-                currentXp={userStats.dailyXp}
-                goalXp={userStats.dailyGoal}
-                size={120}
-              />
-            </View>
-          </GlowCard>
-        </Animated.View>
-
-        {/* Stats Row */}
-        <Animated.View entering={FadeInDown.delay(300).duration(400)}>
-          <StatsRow
-            stats={[
-              {
-                value: userStats.minutesToday,
-                label: 'Minutes',
-                icon: 'clock-outline',
-                iconColor: colors.info,
-                format: 'number',
-                suffix: 'm',
-              },
-              {
-                value: userStats.versesToday,
-                label: 'Verses',
-                icon: 'book-open-variant',
-                iconColor: colors.accent,
-              },
-              {
-                value: userStats.dailyXp,
-                label: 'XP Today',
-                icon: 'star-four-points',
-                iconColor: colors.xp,
-              },
-            ]}
-            style={styles.statsRow}
+            size="xl"
+            fullWidth
+            icon="brain"
           />
-        </Animated.View>
-
-        {/* Learn & Memorize Card */}
-        <Animated.View entering={FadeInDown.delay(400).duration(400)}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => router.push('/learn')}
-          >
-            <LinearGradient
-              colors={[colors.accent, colors.accentDark]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.continueCard}
-            >
-              <View style={styles.continueContent}>
-                <View style={styles.continueIcon}>
-                  <MaterialCommunityIcons
-                    name="brain"
-                    size={48}
-                    color={colors.text}
-                  />
-                </View>
-                <View style={styles.continueText}>
-                  <Text style={styles.continueTitle}>Learn & Memorize</Text>
-                  <Text style={styles.continueSubtitle}>
-                    Confidence-based Quran memorization
-                  </Text>
-                </View>
-                <MaterialCommunityIcons
-                  name="chevron-right"
-                  size={28}
-                  color={colors.text}
-                />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
-
-        {/* Continue Reading Card */}
-        <Animated.View entering={FadeInDown.delay(450).duration(400)}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => router.push('/practice')}
-          >
-            <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.continueCard}
-            >
-              <View style={styles.continueContent}>
-                <View style={styles.continueIcon}>
-                  <MaterialCommunityIcons
-                    name="play-circle"
-                    size={48}
-                    color={colors.text}
-                  />
-                </View>
-                <View style={styles.continueText}>
-                  <Text style={styles.continueTitle}>Continue Practice</Text>
-                  <Text style={styles.continueSubtitle}>
-                    Surah Al-Fatiha • Ayah 1
-                  </Text>
-                </View>
-                <MaterialCommunityIcons
-                  name="chevron-right"
-                  size={28}
-                  color={colors.text}
-                />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
         </Animated.View>
 
         {/* Section Title */}
         <Text style={styles.sectionTitle}>Your Learning Path</Text>
 
-        {/* Lesson Modules */}
-        {MOCK_MODULES.map((module, index) => (
-          <Animated.View
-            key={module.id}
-            entering={FadeInDown.delay(500 + index * 80).duration(400)}
-          >
-            <TouchableOpacity
-              activeOpacity={module.locked ? 1 : 0.8}
-              onPress={() => handleModulePress(module.id, module.locked)}
-              style={[
-                styles.moduleCard,
-                module.locked && styles.moduleCardLocked,
-              ]}
-            >
-              <View
-                style={[
-                  styles.moduleIcon,
-                  {
-                    backgroundColor: module.locked
-                      ? colors.backgroundMuted
-                      : `${module.color}20`,
-                    borderColor: module.locked ? colors.border : module.color,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name={module.iconName as any}
-                  size={26}
-                  color={module.locked ? colors.textMuted : module.color}
-                />
-              </View>
+        {/* Lesson Path */}
+        <View style={styles.lessonPath}>
+          {MOCK_LESSONS.map((lesson, index) => (
+            <LessonNode
+              key={lesson.id}
+              lesson={lesson}
+              index={index}
+              onPress={() => handleLessonPress(lesson.id)}
+            />
+          ))}
+        </View>
 
-              <View style={styles.moduleContent}>
-                <View style={styles.moduleTitleRow}>
-                  <Text
-                    style={[
-                      styles.moduleTitle,
-                      module.locked && styles.moduleTitleLocked,
-                    ]}
-                  >
-                    {module.title}
-                  </Text>
-                  {module.locked && (
-                    <MaterialCommunityIcons
-                      name="lock"
-                      size={16}
-                      color={colors.textMuted}
-                    />
-                  )}
-                </View>
-                <Text style={styles.moduleDescription}>{module.description}</Text>
-
-                {!module.locked && (
-                  <View style={styles.moduleProgress}>
-                    <View style={styles.progressBar}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          {
-                            width: `${(module.completedCount / module.lessonCount) * 100}%`,
-                            backgroundColor: module.color,
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.moduleProgressText}>
-                      {module.completedCount}/{module.lessonCount}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={24}
-                color={module.locked ? colors.textMuted : colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </Animated.View>
-        ))}
-
+        {/* Bottom spacer for tab bar */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ============================================================================
+// Styles
+// ============================================================================
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.backgroundElevated,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  streakEmoji: {
+    fontSize: 24,
+  },
+  headerValue: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '800',
+    color: colors.streak,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
+    paddingTop: spacing.lg,
   },
   greeting: {
+    marginBottom: spacing.lg,
+  },
+  greetingText: {
     fontSize: typography.sizes.xxl,
     fontWeight: '800',
     color: colors.text,
   },
-  subtitle: {
+  greetingSubtext: {
     fontSize: typography.sizes.md,
     color: colors.textSecondary,
     marginTop: spacing.xxs,
@@ -409,135 +403,154 @@ const styles = StyleSheet.create({
   streakCalendar: {
     marginBottom: spacing.lg,
   },
-  goalSection: {
-    marginBottom: spacing.lg,
-  },
+  // Daily Goal Card
   goalCard: {
+    backgroundColor: colors.backgroundCard,
+    borderRadius: radii.card,
     padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.border,
+    ...shadows.md,
   },
-  goalContent: {
+  goalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  goalLeft: {
-    flex: 1,
-    marginRight: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   goalTitle: {
     fontSize: typography.sizes.lg,
     fontWeight: '700',
     color: colors.text,
   },
-  goalDescription: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  levelBadge: {
-    marginTop: spacing.md,
-  },
-  statsRow: {
-    marginBottom: spacing.lg,
-  },
-  continueCard: {
-    borderRadius: radii.xl,
-    marginBottom: spacing.xl,
-    ...shadows.lg,
-  },
-  continueContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-  },
-  continueIcon: {
-    marginRight: spacing.md,
-  },
-  continueText: {
-    flex: 1,
-  },
-  continueTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  continueSubtitle: {
-    fontSize: typography.sizes.sm,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: spacing.xxs,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  moduleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.backgroundCard,
-    borderRadius: radii.xl,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  moduleCardLocked: {
-    opacity: 0.6,
-  },
-  moduleIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: radii.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-    borderWidth: 1.5,
-  },
-  moduleContent: {
-    flex: 1,
-  },
-  moduleTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  moduleTitle: {
+  goalComplete: {
     fontSize: typography.sizes.md,
-    fontWeight: '700',
-    color: colors.text,
+    fontWeight: '600',
+    color: colors.success,
   },
-  moduleTitleLocked: {
+  goalContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  goalText: {
+    flex: 1,
+  },
+  goalXp: {
+    marginBottom: spacing.sm,
+  },
+  goalXpCurrent: {
+    fontSize: typography.sizes.xxl,
+    fontWeight: '800',
+    color: colors.secondary,
+  },
+  goalXpSlash: {
+    fontSize: typography.sizes.lg,
     color: colors.textMuted,
   },
-  moduleDescription: {
+  goalXpGoal: {
+    fontSize: typography.sizes.lg,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  goalProgressBar: {
+    height: 8,
+    backgroundColor: colors.backgroundMuted,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: spacing.sm,
+  },
+  goalProgressFill: {
+    height: '100%',
+    backgroundColor: colors.secondary,
+    borderRadius: 4,
+  },
+  goalEncouragement: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    marginTop: spacing.xxs,
   },
-  moduleProgress: {
-    flexDirection: 'row',
+  // Start Button
+  startButtonContainer: {
+    marginBottom: spacing.xl,
+  },
+  // Section Title
+  sectionTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  // Lesson Path
+  lessonPath: {
     alignItems: 'center',
-    marginTop: spacing.sm,
-    gap: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  progressBar: {
-    flex: 1,
+  lessonNodeContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  connector: {
+    position: 'absolute',
+    top: -spacing.lg,
+    width: 4,
+    height: spacing.lg + 10,
+    backgroundColor: colors.border,
+    borderRadius: 2,
+  },
+  lessonNode: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.3)',
+    ...shadows.lg,
+  },
+  lessonNodeLocked: {
+    borderColor: colors.border,
+    opacity: 0.6,
+  },
+  progressRing: {
+    position: 'absolute',
+    bottom: -8,
+    left: 0,
+    right: 0,
     height: 6,
     backgroundColor: colors.backgroundMuted,
     borderRadius: 3,
     overflow: 'hidden',
   },
-  progressFill: {
+  progressRingFill: {
     height: '100%',
     borderRadius: 3,
   },
-  moduleProgressText: {
-    fontSize: typography.sizes.xs,
-    fontWeight: '600',
+  crownBadge: {
+    position: 'absolute',
+    top: -10,
+    flexDirection: 'row',
+  },
+  crownEmoji: {
+    fontSize: 16,
+    marginHorizontal: -2,
+  },
+  lessonTitle: {
+    fontSize: typography.sizes.md,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: spacing.sm,
+  },
+  lessonTitleArabic: {
+    fontSize: typography.sizes.lg,
+    color: colors.textArabic,
+    marginTop: spacing.xxs,
+  },
+  lessonTitleLocked: {
     color: colors.textMuted,
   },
   bottomSpacer: {
-    height: spacing.xxxl + 20,
+    height: spacing.xxxl + 40,
   },
 });
