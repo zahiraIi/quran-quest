@@ -353,19 +353,23 @@ export function AyahLearningCard({
           onPass={handlePass}
           onFail={handleFail}
           revealed={revealed}
-          ayahText={ayah.textUthmani}
+          ayahText={ayah.textUthmani || ayah.text || `[Ayah ${ayah.numberInSurah}]`}
         />
       ) : (
         <>
           {/* Arabic text */}
           <View style={styles.ayahContainer}>
-            <Text style={styles.arabicText}>{ayah.textUthmani}</Text>
+            <Text style={styles.arabicText}>
+              {ayah.textUthmani || ayah.text || `[Ayah ${ayah.numberInSurah}]`}
+            </Text>
           </View>
 
           {/* Translation */}
-          {showTranslation && ayah.translation && (
+          {showTranslation && (
             <View style={styles.translationContainer}>
-              <Text style={styles.translationText}>{ayah.translation}</Text>
+              <Text style={styles.translationText}>
+                {ayah.translation || ayah.transliteration || '...'}
+              </Text>
             </View>
           )}
 

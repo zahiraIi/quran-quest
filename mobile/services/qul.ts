@@ -178,6 +178,7 @@ export async function fetchAyahs(
     // Build query parameters
     const params = new URLSearchParams({
       language: 'en',
+      fields: 'text_uthmani,text_imlaei,verse_key', // Explicitly request text fields
       words: includeWords.toString(),
       word_fields: 'text_uthmani,text_imlaei',
       word_translation_language: 'en',
@@ -232,6 +233,18 @@ export async function fetchAyahs(
     return allVerses;
   } catch (error) {
     console.error(`Error fetching ayahs for surah ${surahId}:`, error);
+    
+    // Try fallback data
+    const fallback = getFallbackAyahs(surahId);
+    if (fallback) {
+      console.log(`Using fallback data for surah ${surahId}`);
+      return fallback.filter((a) => {
+        const afterStart = a.numberInSurah >= startAyah;
+        const beforeEnd = endAyah ? a.numberInSurah <= endAyah : true;
+        return afterStart && beforeEnd;
+      });
+    }
+    
     throw error;
   }
 }
@@ -403,6 +416,274 @@ export const COMMON_SURAHS = [
   { id: 56, name: 'الواقعة', nameEn: 'Al-Waqi\'a', ayahCount: 96 },
   { id: 18, name: 'الكهف', nameEn: 'Al-Kahf', ayahCount: 110 },
 ];
+
+/**
+ * Fallback ayah data for offline use / when API fails.
+ * Contains the most commonly memorized surahs.
+ */
+export const FALLBACK_AYAHS: Record<number, Ayah[]> = {
+  // Surah Al-Fatiha
+  1: [
+    {
+      id: 1,
+      surahId: 1,
+      numberInSurah: 1,
+      text: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+      textUthmani: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
+      translation: 'In the name of Allah, the Entirely Merciful, the Especially Merciful.',
+      transliteration: 'Bismillahir Rahmanir Raheem',
+      audioUrl: getAyahAudioUrl(1, 1),
+      words: [],
+    },
+    {
+      id: 2,
+      surahId: 1,
+      numberInSurah: 2,
+      text: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ',
+      textUthmani: 'ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَـٰلَمِينَ',
+      translation: 'All praise is due to Allah, Lord of the worlds.',
+      transliteration: 'Alhamdu lillahi Rabbil Aalameen',
+      audioUrl: getAyahAudioUrl(1, 2),
+      words: [],
+    },
+    {
+      id: 3,
+      surahId: 1,
+      numberInSurah: 3,
+      text: 'الرَّحْمَٰنِ الرَّحِيمِ',
+      textUthmani: 'ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ',
+      translation: 'The Entirely Merciful, the Especially Merciful.',
+      transliteration: 'Ar-Rahmanir Raheem',
+      audioUrl: getAyahAudioUrl(1, 3),
+      words: [],
+    },
+    {
+      id: 4,
+      surahId: 1,
+      numberInSurah: 4,
+      text: 'مَالِكِ يَوْمِ الدِّينِ',
+      textUthmani: 'مَـٰلِكِ يَوْمِ ٱلدِّينِ',
+      translation: 'Sovereign of the Day of Recompense.',
+      transliteration: 'Maliki Yawmid Deen',
+      audioUrl: getAyahAudioUrl(1, 4),
+      words: [],
+    },
+    {
+      id: 5,
+      surahId: 1,
+      numberInSurah: 5,
+      text: 'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ',
+      textUthmani: 'إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ',
+      translation: 'It is You we worship and You we ask for help.',
+      transliteration: 'Iyyaka nabudu wa iyyaka nastaeen',
+      audioUrl: getAyahAudioUrl(1, 5),
+      words: [],
+    },
+    {
+      id: 6,
+      surahId: 1,
+      numberInSurah: 6,
+      text: 'اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ',
+      textUthmani: 'ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ',
+      translation: 'Guide us to the straight path.',
+      transliteration: 'Ihdinas Siratal Mustaqeem',
+      audioUrl: getAyahAudioUrl(1, 6),
+      words: [],
+    },
+    {
+      id: 7,
+      surahId: 1,
+      numberInSurah: 7,
+      text: 'صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ الْمَغْضُوبِ عَلَيْهِمْ وَلَا الضَّالِّينَ',
+      textUthmani: 'صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ',
+      translation: 'The path of those upon whom You have bestowed favor, not of those who have earned [Your] anger or of those who are astray.',
+      transliteration: 'Siratal lazeena anamta alaihim ghairil maghdoobi alaihim wa lad daalleen',
+      audioUrl: getAyahAudioUrl(1, 7),
+      words: [],
+    },
+  ],
+  // Surah Al-Ikhlas
+  112: [
+    {
+      id: 6221,
+      surahId: 112,
+      numberInSurah: 1,
+      text: 'قُلْ هُوَ اللَّهُ أَحَدٌ',
+      textUthmani: 'قُلْ هُوَ ٱللَّهُ أَحَدٌ',
+      translation: 'Say, "He is Allah, [who is] One."',
+      transliteration: 'Qul huwa Allahu ahad',
+      audioUrl: getAyahAudioUrl(112, 1),
+      words: [],
+    },
+    {
+      id: 6222,
+      surahId: 112,
+      numberInSurah: 2,
+      text: 'اللَّهُ الصَّمَدُ',
+      textUthmani: 'ٱللَّهُ ٱلصَّمَدُ',
+      translation: 'Allah, the Eternal Refuge.',
+      transliteration: 'Allahus Samad',
+      audioUrl: getAyahAudioUrl(112, 2),
+      words: [],
+    },
+    {
+      id: 6223,
+      surahId: 112,
+      numberInSurah: 3,
+      text: 'لَمْ يَلِدْ وَلَمْ يُولَدْ',
+      textUthmani: 'لَمْ يَلِدْ وَلَمْ يُولَدْ',
+      translation: 'He neither begets nor is born.',
+      transliteration: 'Lam yalid wa lam yoolad',
+      audioUrl: getAyahAudioUrl(112, 3),
+      words: [],
+    },
+    {
+      id: 6224,
+      surahId: 112,
+      numberInSurah: 4,
+      text: 'وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ',
+      textUthmani: 'وَلَمْ يَكُن لَّهُۥ كُفُوًا أَحَدٌۢ',
+      translation: 'Nor is there to Him any equivalent.',
+      transliteration: 'Wa lam yakun lahu kufuwan ahad',
+      audioUrl: getAyahAudioUrl(112, 4),
+      words: [],
+    },
+  ],
+  // Surah An-Nas
+  114: [
+    {
+      id: 6231,
+      surahId: 114,
+      numberInSurah: 1,
+      text: 'قُلْ أَعُوذُ بِرَبِّ النَّاسِ',
+      textUthmani: 'قُلْ أَعُوذُ بِرَبِّ ٱلنَّاسِ',
+      translation: 'Say, "I seek refuge in the Lord of mankind."',
+      transliteration: 'Qul aoodhu bi Rabbin naas',
+      audioUrl: getAyahAudioUrl(114, 1),
+      words: [],
+    },
+    {
+      id: 6232,
+      surahId: 114,
+      numberInSurah: 2,
+      text: 'مَلِكِ النَّاسِ',
+      textUthmani: 'مَلِكِ ٱلنَّاسِ',
+      translation: 'The Sovereign of mankind.',
+      transliteration: 'Malikin naas',
+      audioUrl: getAyahAudioUrl(114, 2),
+      words: [],
+    },
+    {
+      id: 6233,
+      surahId: 114,
+      numberInSurah: 3,
+      text: 'إِلَٰهِ النَّاسِ',
+      textUthmani: 'إِلَـٰهِ ٱلنَّاسِ',
+      translation: 'The God of mankind.',
+      transliteration: 'Ilaahin naas',
+      audioUrl: getAyahAudioUrl(114, 3),
+      words: [],
+    },
+    {
+      id: 6234,
+      surahId: 114,
+      numberInSurah: 4,
+      text: 'مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ',
+      textUthmani: 'مِن شَرِّ ٱلْوَسْوَاسِ ٱلْخَنَّاسِ',
+      translation: 'From the evil of the retreating whisperer.',
+      transliteration: 'Min sharril waswaasil khannaas',
+      audioUrl: getAyahAudioUrl(114, 4),
+      words: [],
+    },
+    {
+      id: 6235,
+      surahId: 114,
+      numberInSurah: 5,
+      text: 'الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ',
+      textUthmani: 'ٱلَّذِى يُوَسْوِسُ فِى صُدُورِ ٱلنَّاسِ',
+      translation: 'Who whispers [evil] into the breasts of mankind.',
+      transliteration: 'Allazee yuwaswisu fee sudoorin naas',
+      audioUrl: getAyahAudioUrl(114, 5),
+      words: [],
+    },
+    {
+      id: 6236,
+      surahId: 114,
+      numberInSurah: 6,
+      text: 'مِنَ الْجِنَّةِ وَالنَّاسِ',
+      textUthmani: 'مِنَ ٱلْجِنَّةِ وَٱلنَّاسِ',
+      translation: 'From among the jinn and mankind.',
+      transliteration: 'Minal jinnati wan naas',
+      audioUrl: getAyahAudioUrl(114, 6),
+      words: [],
+    },
+  ],
+  // Surah Al-Falaq
+  113: [
+    {
+      id: 6226,
+      surahId: 113,
+      numberInSurah: 1,
+      text: 'قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ',
+      textUthmani: 'قُلْ أَعُوذُ بِرَبِّ ٱلْفَلَقِ',
+      translation: 'Say, "I seek refuge in the Lord of daybreak."',
+      transliteration: 'Qul aoodhu bi Rabbil falaq',
+      audioUrl: getAyahAudioUrl(113, 1),
+      words: [],
+    },
+    {
+      id: 6227,
+      surahId: 113,
+      numberInSurah: 2,
+      text: 'مِن شَرِّ مَا خَلَقَ',
+      textUthmani: 'مِن شَرِّ مَا خَلَقَ',
+      translation: 'From the evil of that which He created.',
+      transliteration: 'Min sharri ma khalaq',
+      audioUrl: getAyahAudioUrl(113, 2),
+      words: [],
+    },
+    {
+      id: 6228,
+      surahId: 113,
+      numberInSurah: 3,
+      text: 'وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ',
+      textUthmani: 'وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ',
+      translation: 'And from the evil of darkness when it settles.',
+      transliteration: 'Wa min sharri ghaasiqin izaa waqab',
+      audioUrl: getAyahAudioUrl(113, 3),
+      words: [],
+    },
+    {
+      id: 6229,
+      surahId: 113,
+      numberInSurah: 4,
+      text: 'وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ',
+      textUthmani: 'وَمِن شَرِّ ٱلنَّفَّـٰثَـٰتِ فِى ٱلْعُقَدِ',
+      translation: 'And from the evil of the blowers in knots.',
+      transliteration: 'Wa min sharrin naffaathaati fil uqad',
+      audioUrl: getAyahAudioUrl(113, 4),
+      words: [],
+    },
+    {
+      id: 6230,
+      surahId: 113,
+      numberInSurah: 5,
+      text: 'وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ',
+      textUthmani: 'وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ',
+      translation: 'And from the evil of an envier when he envies.',
+      transliteration: 'Wa min sharri haasidin izaa hasad',
+      audioUrl: getAyahAudioUrl(113, 5),
+      words: [],
+    },
+  ],
+};
+
+/**
+ * Get fallback ayahs for a surah if available.
+ */
+export function getFallbackAyahs(surahId: number): Ayah[] | null {
+  return FALLBACK_AYAHS[surahId] || null;
+}
 
 /**
  * Get Juz (part) information.
